@@ -80,14 +80,26 @@ When the simulator stops, the LED goes back to the board's default
 
    ```sh
    cd ~/fluxio-x8-sim
-   sudo docker compose up -d --build
+   sudo DOCKER_BUILDKIT=0 docker compose up -d --build
    sudo docker compose logs -f
    ```
 
 4. Stop with `sudo docker compose down`.
 
-The container has no restart policy yet, so it does not come back after a
-reboot.
+The container comes back on its own after a reboot (`restart:
+unless-stopped`), unless it was stopped by hand.
+
+The image must be built with the classic builder (`DOCKER_BUILDKIT=0`, after
+`sudo` because sudo drops the environment). At every boot, before Docker
+starts, LmP runs `fio-docker-fsck -fix-store`, which only accepts layer
+cache IDs of 64 hex characters. BuildKit writes shorter IDs, so its layers
+are deleted as broken and the image and container are gone after the reboot.
+To check an image before rebooting, this must print nothing:
+
+```sh
+sudo sh -c 'for f in /var/lib/docker/image/overlay2/layerdb/sha256/*/cache-id; do cat "$f"; echo; done' \
+  | grep -v -E '^[a-f0-9]{64}$'
+```
 
 ## Wi-Fi fallback access point
 

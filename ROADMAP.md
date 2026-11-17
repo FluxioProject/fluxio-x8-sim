@@ -11,6 +11,8 @@
 - [x] Wi-Fi fallback access point with a captive setup page, as a host
       systemd service. Like the firmware, the page is also open on the
       regular network for 10 minutes after start.
+- [x] Simulator container back on its own after a reboot, built with the
+      classic builder so LmP's `fio-docker-fsck` keeps its layers.
 - [x] Unit tests (standard library only), also run on the board's Python 3.10
       and inside the container.
 
@@ -63,7 +65,6 @@ controlled by the M4 and supervised from Fluxio.
 ## Backlog
 
 - White LED pattern while the fallback access point is up.
-- Start the simulator container at boot (`restart: unless-stopped`).
 - paho reports the same disconnect twice in the log.
 - Logic engine and OTA simulation, left out of phase 0 on purpose.
 - Own LmP/Yocto image with OTA and per-device MQTT credentials. The board's
