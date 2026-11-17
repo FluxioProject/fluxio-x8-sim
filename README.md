@@ -109,6 +109,7 @@ can't join a Wi-Fi network, so it can be configured from a phone.
 | Step | What happens |
 |---|---|
 | No Wi-Fi client connection for 60 s | Scans the networks around, then starts the access point `Fluxio-<last 4 of the device ID>` (WPA2) |
+| Fallback network set and in range | Before the access point, one attempt to join `FLUXIO_WIFI_FALLBACK_SSID`; the access point only comes up if it fails. Tried again before each access point |
 | Phone joins the access point | Every DNS name answers `10.42.0.1`, so the phone pops up the setup page |
 | Network chosen and saved on `/wifi` | The access point goes down and the board joins that network; NetworkManager keeps it for later boots |
 | Wrong password | The access point comes back and the Wi-Fi page shows the error |

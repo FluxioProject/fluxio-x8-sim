@@ -26,10 +26,20 @@ class WifiConfigTest(unittest.TestCase):
         cfg = load_config({**BASE, "FLUXIO_WIFI_GRACE_S": "15", "FLUXIO_PORTAL_PORT": "8080", "FLUXIO_WIFI_IFACE": "wlan1"})
         self.assertEqual((cfg.timing.grace_s, cfg.portal_port, cfg.iface), (15.0, 8080, "wlan1"))
 
+    def test_fallback_network(self):
+        self.assertIsNone(load_config(BASE).fallback)
+        cfg = load_config({**BASE, "FLUXIO_WIFI_FALLBACK_SSID": "Lab", "FLUXIO_WIFI_FALLBACK_PASSWORD": "labpass1"})
+        self.assertEqual((cfg.fallback.ssid, cfg.fallback.password), ("Lab", "labpass1"))
+        self.assertNotIn("labpass1", repr(cfg))
+        open_net = load_config({**BASE, "FLUXIO_WIFI_FALLBACK_SSID": "Guest"})
+        self.assertEqual(open_net.fallback.password, "")
+
     def test_invalid(self):
         cases = [
             {"FLUXIO_AP_PASSWORD": "secret123"},
             {**BASE, "FLUXIO_AP_PASSWORD": "short"},
+            {**BASE, "FLUXIO_WIFI_FALLBACK_SSID": "Lab", "FLUXIO_WIFI_FALLBACK_PASSWORD": "short"},
+            {**BASE, "FLUXIO_WIFI_FALLBACK_PASSWORD": "labpass1"},
             {**BASE, "FLUXIO_WIFI_GRACE_S": "soon"},
             {**BASE, "FLUXIO_WIFI_AP_WINDOW_S": "0"},
             {**BASE, "FLUXIO_PORTAL_PORT": "http"},

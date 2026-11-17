@@ -10,7 +10,8 @@
       white.
 - [x] Wi-Fi fallback access point with a captive setup page, as a host
       systemd service. Like the firmware, the page is also open on the
-      regular network for 10 minutes after start.
+      regular network for 10 minutes after start. An optional fallback
+      network is tried before the access point comes up.
 - [x] Simulator container back on its own after a reboot, built with the
       classic builder so LmP's `fio-docker-fsck` keeps its layers.
 - [x] Unit tests (standard library only), also run on the board's Python 3.10

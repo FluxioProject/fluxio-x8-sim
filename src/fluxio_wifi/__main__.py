@@ -37,6 +37,7 @@ def main() -> int:
         config.ap_ssid,
         config.ap_password,
         config.timing,
+        fallback=config.fallback,
     )
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
@@ -46,6 +47,8 @@ def main() -> int:
         "Watching %s; access point %s after %.0fs without Wi-Fi; setup page on the regular network for %.0fs",
         config.iface, config.ap_ssid, config.timing.grace_s, config.timing.lan_portal_s,
     )
+    if config.fallback is not None:
+        log.info("Fallback network %r is tried before the access point", config.fallback.ssid)
     controller.run(stop)
     log.info("Stopped")
     return 0

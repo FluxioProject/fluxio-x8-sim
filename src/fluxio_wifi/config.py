@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Mapping
 
-from .controller import Timing
+from .controller import Credentials, Timing
 
 
 class ConfigError(ValueError):
@@ -21,6 +21,7 @@ class WifiConfig:
     portal_port: int = 80
     timing: Timing = field(default_factory=Timing)
     log_level: str = "INFO"
+    fallback: Credentials | None = None
 
     @property
     def ap_ssid(self) -> str:
@@ -77,6 +78,17 @@ def load_config(env: Mapping[str, str] = os.environ) -> WifiConfig:
         lan_portal_s=_window(env, "FLUXIO_PORTAL_LAN_S", defaults.lan_portal_s),
     )
 
+    fallback = None
+    fallback_ssid = _get(env, "FLUXIO_WIFI_FALLBACK_SSID")
+    fallback_password = env.get("FLUXIO_WIFI_FALLBACK_PASSWORD", "")
+    if fallback_ssid:
+        # Empty means an open network.
+        if fallback_password and not 8 <= len(fallback_password) <= 63:
+            raise ConfigError("FLUXIO_WIFI_FALLBACK_PASSWORD must be empty or have 8 to 63 characters (WPA2)")
+        fallback = Credentials(fallback_ssid, fallback_password)
+    elif fallback_password:
+        raise ConfigError("FLUXIO_WIFI_FALLBACK_PASSWORD is set without FLUXIO_WIFI_FALLBACK_SSID")
+
     port_raw = _get(env, "FLUXIO_PORTAL_PORT") or "80"
     try:
         port = int(port_raw)
@@ -90,4 +102,5 @@ def load_config(env: Mapping[str, str] = os.environ) -> WifiConfig:
         portal_port=port,
         timing=timing,
         log_level=_get(env, "FLUXIO_LOG_LEVEL").upper() or "INFO",
+        fallback=fallback,
     )

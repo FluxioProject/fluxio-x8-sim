@@ -67,12 +67,14 @@ class Controller:
         ap_password: str,
         timing: Timing = Timing(),
         clock: Callable[[], float] = time.monotonic,
+        fallback: Credentials | None = None,
     ) -> None:
         self._nm = nm
         self._open_portal = open_portal
         self._ap_ssid = ap_ssid
         self._ap_password = ap_password
         self._timing = timing
+        self._fallback = fallback
         self._clock = clock
         start = clock()
         self._last_ok = start
@@ -128,8 +130,13 @@ class Controller:
             if now < self._lan_until and now - self._last_scan >= SCAN_EVERY_S:
                 self._scan(now)
         elif now - self._last_ok >= self._timing.grace_s:
-            log.warning("No Wi-Fi for %.0fs; starting access point %s", now - self._last_ok, self._ap_ssid)
-            self._start_ap(now)
+            log.warning("No Wi-Fi for %.0fs", now - self._last_ok)
+            # Both need a fresh scan, so it is taken once here.
+            visible = self._scan(now)
+            if self._try_fallback(visible):
+                return
+            log.info("Starting access point %s", self._ap_ssid)
+            self._start_ap(self._clock(), scanned=True)
 
     def _access_point(self, now: float) -> None:
         if now - self._ap_since < self._timing.ap_window_s:
@@ -140,22 +147,43 @@ class Controller:
         self._nm.stop_hotspot()
         self._retry_ap_later(now)
 
-    def _scan(self, now: float) -> None:
+    def _scan(self, now: float) -> list[Network]:
         self._last_scan = now
         networks = self._nm.scan()
         # A failed scan comes back empty; keep offering the last good list.
         if networks:
             self.networks = networks
+        return networks
+
+    def _try_fallback(self, visible: list[Network]) -> bool:
+        """One attempt on the fallback network before the access point comes up."""
+        fallback = self._fallback
+        if fallback is None:
+            return False
+        # Skipping a network that isn't around saves the 40 s connect timeout.
+        if not any(n.ssid == fallback.ssid for n in visible):
+            log.info("Fallback network %r not in range", fallback.ssid)
+            return False
+
+        log.info("Trying fallback network %r", fallback.ssid)
+        ok, error = self._nm.connect(fallback.ssid, fallback.password)
+        if not ok:
+            log.warning("Could not connect to fallback network %r: %s", fallback.ssid, error)
+            return False
+        log.info("Connected to fallback network %r", fallback.ssid)
+        self._last_ok = self._clock()
+        return True
 
     def _retry_ap_later(self, now: float) -> None:
         self.mode = "monitor"
         # Reopen the AP after client_retry_s instead of the full grace period.
         self._last_ok = now - self._timing.grace_s + self._timing.client_retry_s
 
-    def _start_ap(self, now: float) -> None:
+    def _start_ap(self, now: float, scanned: bool = False) -> None:
         # The radio can't scan while it is the access point, so the page
         # offers the list taken right before.
-        self._scan(now)
+        if not scanned:
+            self._scan(now)
         if not self._nm.start_hotspot(self._ap_ssid, self._ap_password):
             self._retry_ap_later(now)
             return

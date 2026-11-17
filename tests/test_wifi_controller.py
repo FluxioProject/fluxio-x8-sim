@@ -261,5 +261,52 @@ class RegularNetworkTest(ControllerTestCase):
         self.assertEqual(len(self.open_portals()), 1)
 
 
+class FallbackNetworkTest(ControllerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.controller = Controller(
+            self.nm, self._open_portal, "Fluxio-022B", "secret123", self.timing, self.clock,
+            fallback=Credentials("Lab", "labpass1"),
+        )
+        self.nm.scan_result = [Network("Home", 70, True), Network("Lab", 50, True)]
+
+    def lose_wifi(self):
+        self.nm.connected = False
+        self.advance(1)
+        self.advance(AP_ONLY.grace_s)
+
+    def test_fallback_in_range_is_joined_instead_of_the_ap(self):
+        self.lose_wifi()
+        self.assertEqual(self.nm.events, ["scan", ("connect", "Lab", "labpass1")])
+        self.assertEqual(self.controller.mode, "monitor")
+        self.assertEqual(self.portals, [])
+        self.advance(AP_ONLY.grace_s * 3)
+        self.assertEqual(self.controller.mode, "monitor")
+
+    def test_failed_fallback_starts_the_ap_with_a_single_scan(self):
+        self.nm.connect_result = (False, "Secrets were required")
+        self.lose_wifi()
+        self.assertEqual(
+            self.nm.events,
+            ["scan", ("connect", "Lab", "labpass1"), ("hotspot", "Fluxio-022B", "secret123")],
+        )
+        self.assertEqual(self.controller.mode, "ap")
+        self.assertEqual([n.ssid for n in self.controller.networks], ["Home", "Lab"])
+
+    def test_fallback_out_of_range_goes_straight_to_the_ap(self):
+        self.nm.scan_result = [Network("Home", 70, True)]
+        self.lose_wifi()
+        self.assertEqual(self.nm.events, ["scan", ("hotspot", "Fluxio-022B", "secret123")])
+        self.assertEqual(self.controller.mode, "ap")
+
+    def test_fallback_is_tried_again_before_each_ap(self):
+        self.nm.connect_result = (False, "timeout")
+        self.lose_wifi()
+        self.advance(AP_ONLY.ap_window_s)
+        self.advance(AP_ONLY.client_retry_s)
+        self.assertEqual(self.nm.events.count(("connect", "Lab", "labpass1")), 2)
+        self.assertEqual(self.controller.mode, "ap")
+
+
 if __name__ == "__main__":
     unittest.main()
