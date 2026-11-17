@@ -15,7 +15,7 @@ import paho.mqtt.client as mqtt
 from .backend import Backend, BackendError, DeviceNotRegistered
 from .config import Config
 from .io_source import IoSource
-from .led import CYAN, MAGENTA, StatusLed
+from .led import MAGENTA, StatusLed
 from .protocol import (
     AI_COUNT,
     DEFAULT_AI_RANGE,
@@ -155,9 +155,10 @@ class SimulatedDevice:
             if self._client.is_connected():
                 with self._state_lock:
                     payload = self._state.next_telemetry(self._io, self._clock())
+                # No LED flash here: telemetry goes out every second while the
+                # dashboard is open, so a flash per message kept the LED blinking.
                 if payload is not None:
                     self._client.publish(self._topics.telemetry, payload)
-                    self._led.flash(CYAN, 0.08)
                 if tick % STATUS_EVERY_TICKS == 0:
                     self._publish_status(self._client)
 

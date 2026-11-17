@@ -48,8 +48,10 @@ implementation and flips `FLUXIO_IO_SOURCE`. Tasks per phase are in
 | Yellow blinking | Device ID not registered in Fluxio yet |
 | Red blinking | Backend or broker error, retrying |
 | Short green blink every 2 s | Online, all digital outputs off |
-| Cyan flash | Telemetry message sent |
 | Magenta flash | Command received (other than a DO command) |
+
+Telemetry has no LED signal: it goes out every second while the dashboard is
+open, so a flash per message would keep the LED blinking.
 
 While online, the digital outputs take over the LED so dashboard commands are
 visible on the board:
@@ -62,8 +64,8 @@ visible on the board:
 | DO3 | White (all three) |
 
 The colors mix, so DO0 + DO1 is yellow and DO1 + DO2 is cyan. While any
-output is on, the cyan and magenta flashes become a short blink-off instead,
-so the output color stays readable.
+output is on, the magenta flash becomes a short blink-off instead, so the
+output color stays readable.
 
 When the simulator stops, the LED goes back to the board's default
 (blue heartbeat).
